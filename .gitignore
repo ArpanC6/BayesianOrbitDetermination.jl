@@ -1,0 +1,13 @@
+# Julia package ignore rules
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/deps.jl
+docs/build/
+docs/site/
+
+# System and IDE files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
