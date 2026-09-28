@@ -13,7 +13,7 @@ cart_true = kepler_to_cartesian(kepler_true)
 u0_true = [cart_true.r...; cart_true.v...]
 
 gs = GroundStation("Goldstone", 35.426, -116.890, 1.0)
-t_obs = collect(range(0.0, stop=5400.0, length=25))
+t_obs = collect(range(0.0, stop=5400.0, length=50))
 
 opts = OrbitPropagatorOptions(include_j2=true, include_drag=true, include_srp=true, Cd=2.2, Cr=1.3, area_to_mass=0.015)
 data = simulate_tracking_data(u0_true, t_obs, gs, 0.015, 2e-4; opts=opts)
@@ -22,9 +22,11 @@ prior_mean = u0_true + [0.5, -0.5, 0.5, 0.001, -0.001, 0.001]
 prior_std  = [2.0, 2.0, 2.0, 0.003, 0.003, 0.003]
 
 println("Sampling posterior for high-altitude LEO with Drag & SRP...")
-chain = fit_bayesian_od(t_obs, data.range, data.doppler, gs, prior_mean, prior_std, opts; n_samples=300, n_adapt=100)
+chain = fit_bayesian_od(t_obs, data.range, data.doppler, gs, prior_mean, prior_std, opts; n_samples=1000, n_adapt=500)
 
-u_samples = hcat([vec(chain[k]) for k in [:u1, :u2, :u3, :u4, :u5, :u6]]...)
+z_samples = hcat([vec(chain[k]) for k in [:z1, :z2, :z3, :z4, :z5, :z6]]...)
+u_samples = z_samples .* prior_std' .+ prior_mean'
+
 u_est_mean = vec(mean(u_samples, dims=1))
 cov_est = cov(u_samples)
 

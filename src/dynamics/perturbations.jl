@@ -8,9 +8,8 @@ Compute acceleration due to Earth J2 oblateness effect in ECI frame.
 function j2_perturbation(r::SVector{3, T}; mu::Float64=MU_EARTH, R_e::Float64=R_EARTH, J2::Float64=J2_EARTH) where T
     x, y, z = r[1], r[2], r[3]
     r_norm = norm(r)
-    r_eff = r_norm < 6000.0 ? T(6000.0) : r_norm
-    factor = 1.5 * J2 * mu * (R_e^2) / (r_eff^5)
-    z_sq_ratio = (z / r_eff)^2
+    factor = 1.5 * J2 * mu * (R_e^2) / (r_norm^5)
+    z_sq_ratio = (z / r_norm)^2
 
     ax = factor * x * (5.0 * z_sq_ratio - 1.0)
     ay = factor * y * (5.0 * z_sq_ratio - 1.0)

@@ -14,8 +14,8 @@ function fit_batch_least_squares(t_obs::Vector{Float64}, range_obs::Vector{Float
         n = length(t_obs)
         res = 0.0
         for i in 1:n
-            r_sat = SVector{3, Float64}(sol.u[i][1:3])
-            v_sat = SVector{3, Float64}(sol.u[i][4:6])
+            r_sat = SVector{3}(sol.u[i][1:3]) # Fixed SVector
+            v_sat = SVector{3}(sol.u[i][4:6]) # Fixed SVector
             meas = eci_to_station_azel_range_doppler(r_sat, v_sat, gs, t_obs[i])
 
             r_res = (range_obs[i] - meas.range) / sigma_range

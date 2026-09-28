@@ -5,10 +5,10 @@ using Statistics
 using Printf
 using Random
 
-println("===============================================================")
+println("------------------------------------------------------------------")
 println("    BayesianOrbitDetermination.jl Benchmark Study Runner")
 println("    Evaluation: Covariance Realism & Discretization Bias (100 Trials)")
-println("===============================================================\n")
+println("-------------------------------------------------------------------\n")
 
 # Fixed Seed for Reproducibility
 Random.seed!(42)
@@ -70,12 +70,12 @@ se_pos_mle   = std(mae_pos_mle) / sqrt(n_trials)
 
 cov_pct = (coverage_counts ./ n_trials) .* 100.0
 
-println("\n===============================================================")
+println("\n--------------------------------------------------------------")
 println("                   FINAL BENCHMARK RESULTS                     ")
-println("===============================================================")
+println("-----------------------------------------------------------------")
 @printf("Bayesian Mahalanobis D^2  : %.3f +/- %.3f (Ideal for 6 DoF = 6.00)\n", mean_d2_b, se_d2_b)
 @printf("Frequentist Mahalanobis D^2: %.3f +/- %.3f (Overconfidence observed)\n", mean_d2_mle, se_d2_mle)
 @printf("Bayesian Position MAE     : %.4f +/- %.4f km\n", mean_pos_b, se_pos_b)
 @printf("Frequentist Position MAE  : %.4f +/- %.4f km\n", mean_pos_mle, se_pos_mle)
 println("Bayesian 90% Coverage (%) per component: ", cov_pct)
-println("===============================================================")
+println("----------------------------------------------------------------------")

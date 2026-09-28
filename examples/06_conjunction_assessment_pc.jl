@@ -3,6 +3,7 @@
 using BayesianOrbitDetermination
 using LinearAlgebra
 using Printf
+using StaticArrays # Added missing import
 
 println("=== BayesianOrbitDetermination.jl Tutorial 06 ===")
 println("Target: Space Collision Probability (Pc) & CCSDS CDM Generation\n")
@@ -26,4 +27,4 @@ pc = compute_collision_probability_foster(conj)
 cdm_file = joinpath(@__DIR__, "sample_conjunction.cdm")
 export_ccsds_cdm(conj, pc, cdm_file)
 println("Generated CCSDS Conjunction Data Message: $(cdm_file)")
-println("Tutorial 06 complete!")
+println("Tutorial 06 complete")

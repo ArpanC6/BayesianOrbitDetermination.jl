@@ -1,5 +1,9 @@
 # NASA NTRS Standard Covariance Realism & Goodness-of-Fit Validation Suite
 
+using LinearAlgebra
+using Statistics
+using Distributions
+
 """
     compute_mahalanobis_distance(u_true::Vector{Float64}, u_est::Vector{Float64}, Cov::Matrix{Float64}) -> Float64
 
@@ -8,12 +12,17 @@ Under realistic Gaussian covariance assumptions, D^2 follows a Chi-Square distri
 """
 function compute_mahalanobis_distance(u_true::Vector{Float64}, u_est::Vector{Float64}, Cov::Matrix{Float64})
     diff = u_true - u_est
+    Cov_sym = Symmetric((Cov + Cov') / 2)
     inv_cov = try
-        inv(Cov)
+        inv(Cov_sym)
     catch
-        pinv(Cov)
+        pinv(Matrix(Cov_sym))
     end
-    return dot(diff, inv_cov * diff)
+    d2 = dot(diff, inv_cov * diff)
+    if d2 < 0
+        @warn "Mahalanobis D² computed negative — covariance likely near-singular" d2
+    end
+    return d2
 end
 
 """
@@ -44,7 +53,7 @@ Assess covariance realism using Mahalanobis distance Chi-Square test and 90% cre
 function EvaluateCovarianceRealism(u_true::Vector{Float64}, posterior_samples::Matrix{Float64}, estimated_cov::Matrix{Float64})
     u_mean = vec(mean(posterior_samples, dims=1))
     d2 = compute_mahalanobis_distance(u_true, u_mean, estimated_cov)
-    
+
     dim = length(u_true)
     chi2_dist = Chisq(dim)
     p_val = 1.0 - cdf(chi2_dist, d2)
@@ -52,7 +61,7 @@ function EvaluateCovarianceRealism(u_true::Vector{Float64}, posterior_samples::M
     # 90% credible interval bounds per component
     q05 = [quantile(posterior_samples[:, j], 0.05) for j in 1:dim]
     q95 = [quantile(posterior_samples[:, j], 0.95) for j in 1:dim]
-    
+
     coverage = [(u_true[j] >= q05[j] && u_true[j] <= q95[j]) for j in 1:dim]
 
     # Overconfidence / underconfidence test based on chi2 threshold (0.01 / 0.99 quantiles)

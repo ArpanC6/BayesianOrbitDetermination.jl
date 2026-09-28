@@ -1,36 +1,56 @@
-# BayesianOrbitDetermination.jl 12-Month Development Roadmap
+# Development Roadmap
 
 ## Project Vision
-To become the open-source gold standard for statistically calibrated Bayesian orbit determination, covariance realism verification, and uncertainty quantification (UQ) across academic research, aerospace industry, and space agency applications (NASA, ESA, CNES).
+
+To become the open-source gold standard for statistically calibrated Bayesian orbit determination, covariance realism verification, and uncertainty quantification across academic research, aerospace industry, and space agency applications including NASA, ESA, and CNES.
 
 ---
 
-## Phase 1: Core Engine & Covariance Realism (Months 1–3) [COMPLETED]
-- [x] **Keplerian & Cartesian Dynamics Engine**: Implement exact ECI state transformations and two-body propagation.
-- [x] **Orbital Perturbations**: Integrate $J_2$ zonal harmonic, exponential atmospheric drag, and Solar Radiation Pressure (SRP) acceleration models.
-- [x] **Ground Station Observation Models**: Implement ECEF-to-ECI coordinate rotations, Range, Range-Rate (Doppler), Azimuth, and Elevation models.
-- [x] **Bayesian Inference Engine**: Construct Turing.jl `@model` for state estimation and measurement noise parameter sampling using NUTS MCMC.
-- [x] **Covariance Realism Suite**: Implement Mahalanobis distance $\chi^2$ Goodness-of-Fit (GOF) test, ECDF calibration, 90-CI coverage analysis, and Simulation-Based Calibration (SBC).
-- [x] **100-Replicate Benchmark Study**: Perform Monte Carlo validation comparing frequentist Batch Least Squares (Orekit baseline) against Bayesian MCMC.
+## Phase 1: Core Engine and Covariance Realism (Months 1 to 3) - COMPLETED
+
+- [x] Keplerian and Cartesian Dynamics Engine: ECI state transformations and two-body propagation
+- [x] Orbital Perturbations: J2 zonal harmonic, exponential atmospheric drag, Solar Radiation Pressure
+- [x] Ground Station Observation Models: ECEF-to-ECI rotations, Range, Range-Rate Doppler, Azimuth, Elevation
+- [x] Bayesian Inference Engine: Turing.jl model with NUTS MCMC and non-centered parameterization
+- [x] Covariance Realism Suite: Mahalanobis D^2 chi-square GOF test, 90% CI coverage, Simulation-Based Calibration
+- [x] 10-Replicate Benchmark Study: Monte Carlo validation comparing Frequentist BLS against Bayesian MCMC
+
+Key result: Frequentist BLS D^2 = 897.52 (150x overconfident), Bayesian MCMC D^2 = 4.70 (calibrated)
 
 ---
 
-## Phase 2: TLE / SGP4 Integration & Sequential Filtering (Months 4–6) [COMPLETED]
-- [x] **SGP4 Analytical Propagator Bridge**: Built-in TLE Line 1 / Line 2 string parser and secular $J_2$ drift analytical propagator.
-- [x] **CCSDS OEM Tracking Data Ingestion**: Observational ingestion module (`src/observations/ingestion.jl`) for Ground Station Observation parsing.
-- [x] **High-Order Gravitational Spherical Harmonics**: Full $J_2, J_3, J_4, J_5$ zonal harmonic acceleration model (`src/dynamics/spherical_harmonics.jl`).
-- [x] **Sequential Kalman Filtering (EKF / UKF)**: Extended Kalman Filter (EKF) and Unscented Kalman Filter (UKF) with ForwardDiff autodiff Jacobians (`src/inference/sequential_filters.jl`).
+## Phase 2: TLE/SGP4 Integration and Sequential Filtering (Months 4 to 6) - COMPLETED
+
+- [x] SGP4 Analytical Propagator Bridge: TLE Line 1/Line 2 parser and secular J2 drift propagator
+- [x] CCSDS OEM Tracking Data Ingestion: Ground Station Observation parsing module
+- [x] High-Order Gravitational Spherical Harmonics: J2, J3, J4, J5 zonal harmonic acceleration model
+- [x] Sequential Kalman Filtering: EKF and UKF with ForwardDiff autodiff Jacobians and matrix exponential STM
 
 ---
 
-## Phase 3: Conjunction Assessment & Multi-Satellite Collision Risk (Months 7–9) [COMPLETED]
-- [x] **Probability of Collision ($P_c$) Engine**: 2D Foster-Elrod satellite collision probability integration over 2D encounter plane perpendicular to relative velocity vector (`src/conjunction/collision_probability.jl`).
-- [x] **Space Traffic Management (STM) CCSDS Export**: Autonomous CCSDS Conjunction Data Message (CDM) exporter (`src/conjunction/cdm_exporter.jl`).
-- [x] **Overconfidence Impact Assessment**: Conjunction risk tutorial notebook (`examples/06_conjunction_assessment_pc.jl`).
+## Phase 3: Conjunction Assessment and Collision Risk (Months 7 to 9) - COMPLETED
+
+- [x] Probability of Collision Engine: 2D Foster-Elrod Pc integration over encounter plane
+- [x] Space Traffic Management CCSDS Export: Autonomous Conjunction Data Message generator
+- [x] Overconfidence Impact Assessment: Conjunction risk case study showing covariance choice affects Pc by 10x
+
+Key result: Overconfident BLS overestimates Pc by 1.9x, bloated covariance underestimates by 5x
 
 ---
 
-## Phase 4: Agency Benchmarking, JOSS Paper & Python Interop (Months 10–12) [COMPLETED]
-- [x] **NASA LaRC UQ Challenge Solver**: Mixed epistemic/aleatory uncertainty bound solver (`src/agency/nasa_larc_uq.jl`).
-- [x] **Journal of Open Source Software (JOSS) Manuscript**: Complete peer-review publication manuscript (`paper/paper.md` & `paper/paper.bib`).
-- [x] **Python Interop Interface**: Python wrapper (`python/bayesian_od_py.py`) using `juliacall` for Orekit / Poliastro / Astropy integration.
+## Phase 4: Agency Benchmarking, JOSS Paper and Python Interop (Months 10 to 12) - COMPLETED
+
+- [x] NASA LaRC UQ Challenge Solver: Mixed epistemic/aleatory uncertainty bound solver
+- [x] JOSS Manuscript: Peer-review publication manuscript (paper/paper.md and paper/paper.bib)
+- [x] Python Interop Interface: Python wrapper using juliacall for Orekit, Poliastro, Astropy integration
+
+---
+
+## Future Work
+
+- [ ] 100-replicate full benchmark study with standard error analysis
+- [ ] Higher-order gravitational models (J6+) and third-body perturbations
+- [ ] Multi-object conjunction screening pipeline
+- [ ] Integration with Orekit for validated dynamics comparison
+- [ ] GPU-accelerated MCMC via CUDA.jl for large constellation OD
+- [ ] Extended SGP4 with deep-space corrections
