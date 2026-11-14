@@ -1,4 +1,8 @@
-# SGP4 / TLE Analytical Orbital Element Propagator & Parser
+# TLE parsing and SGP4 propagation.
+#
+# The numerical propagator in this package is not SGP4. SGP4 is a specific
+# analytical theory for TLEs, and it is delegated to SatelliteToolboxSgp4.jl
+# rather than approximated with Keplerian motion plus a J2 drift.
 
 struct TLE
     sat_name::String
@@ -12,18 +16,25 @@ struct TLE
     argp_deg::Float64
     mean_anomaly_deg::Float64
     mean_motion_rev_day::Float64
+    line1::String
+    line2::String
 end
+
+# Kept for callers that built a TLE from elements; SGP4 needs the raw lines.
+TLE(name, norad_id, epoch_year, epoch_day, bstar, inc, raan, e, argp, ma, mm) =
+    TLE(name, norad_id, epoch_year, epoch_day, bstar, inc, raan, e, argp, ma, mm, "", "")
 
 """
     parse_tle(line1::String, line2::String, name::String="SATELLITE") -> TLE
 
-Parse standard TLE Line 1 and Line 2 into structured `TLE` type.
+Parse standard TLE Line 1 and Line 2 into a structured `TLE`. The raw lines are
+kept so that [`propagate_sgp4`](@ref) can delegate to a real SGP4 implementation.
 """
-function parse_tle(line1::String, line2::String, name::String="SATELLITE")
+function parse_tle(line1::String, line2::String, name::String = "SATELLITE")
     norad_id = parse(Int, strip(line1[3:7]))
     epoch_yr = parse(Int, line1[19:20])
     epoch_day = parse(Float64, line1[21:32])
-    
+
     bstar_str = strip(line1[54:61])
     bstar_val = parse(Float64, bstar_str[1:end-2]) * 10.0^(parse(Float64, bstar_str[end-1:end])) * 1e-5
 
@@ -34,40 +45,42 @@ function parse_tle(line1::String, line2::String, name::String="SATELLITE")
     ma = parse(Float64, strip(line2[44:51]))
     mm = parse(Float64, strip(line2[53:63]))
 
-    return TLE(name, norad_id, epoch_yr, epoch_day, bstar_val, inc, raan, e, argp, ma, mm)
+    return TLE(name, norad_id, epoch_yr, epoch_day, bstar_val, inc, raan, e, argp,
+               ma, mm, line1, line2)
 end
 
 """
     tle_to_keplerian(tle::TLE) -> KeplerianState
 
-Convert TLE parameters to instantaneous osculating KeplerianState.
+Osculating Keplerian elements at the TLE epoch, obtained by evaluating SGP4 at
+`t = 0` and converting the resulting TEME state. This is not the same as the
+mean elements stored in the TLE.
 """
 function tle_to_keplerian(tle::TLE)
-    # Mean motion (rev/day) to semi-major axis a (km)
-    n_rad_s = tle.mean_motion_rev_day * (2pi / 86400.0)
-    a = (MU_EARTH / (n_rad_s^2))^(1/3)
-    
-    return KeplerianState(a, tle.e, deg2rad(tle.inc_deg), deg2rad(tle.raan_deg), deg2rad(tle.argp_deg), deg2rad(tle.mean_anomaly_deg))
+    return cartesian_to_kepler(propagate_sgp4(tle, 0.0))
 end
 
 """
-    propagate_sgp4(tle::TLE, t_sec::Float64) -> CartesianState
+    propagate_sgp4(tle::TLE, t_sec::Float64; verify_checksum::Bool=false) -> CartesianState
 
-Analytical SGP4 propagation approximation over time delta `t_sec` from TLE epoch.
+Propagate a TLE with the real SGP4/SDP4 model from `SatelliteToolboxSgp4.jl`.
+
+`t_sec` is seconds from the TLE epoch. The returned position (km) and velocity
+(km/s) are in the TEME frame, which is what SGP4 is defined in; convert TEME to
+EME2000 before mixing these states with the package's inertial propagator.
+
+TLE checksums are not verified by default because example TLEs in tutorials and
+tests often use placeholder checksums. Pass `verify_checksum = true` for real
+distributed TLEs.
 """
-function propagate_sgp4(tle::TLE, t_sec::Float64)
-    k_init = tle_to_keplerian(tle)
-    n_rad_s = tle.mean_motion_rev_day * (2pi / 86400.0)
-    
-    # Propagate mean anomaly and secular J2 RAAN drift
-    delta_M = n_rad_s * t_sec
-    nu_new = mod(k_init.nu + delta_M, 2pi)
+function propagate_sgp4(tle::TLE, t_sec::Float64; verify_checksum::Bool = false)
+    (isempty(tle.line1) || isempty(tle.line2)) &&
+        throw(ArgumentError("TLE has no raw lines; SGP4 needs line1 and line2. Use parse_tle."))
 
-    # Secular J2 drift rate for RAAN (rad/s)
-    p = k_init.a * (1.0 - k_init.e^2)
-    raan_dot = -1.5 * J2_EARTH * (R_EARTH / p)^2 * n_rad_s * cos(k_init.i)
-    raan_new = mod(k_init.RAAN + raan_dot * t_sec, 2pi)
-
-    k_t = KeplerianState(k_init.a, k_init.e, k_init.i, raan_new, k_init.argp, nu_new)
-    return kepler_to_cartesian(k_t)
+    parsed = SatelliteToolboxTle.read_tle(tle.line1, tle.line2;
+                                          name = tle.sat_name,
+                                          verify_checksum = verify_checksum)
+    sgp4d = SatelliteToolboxSgp4.sgp4_init(parsed)
+    r, v = SatelliteToolboxSgp4.sgp4!(sgp4d, t_sec / 60.0)
+    return CartesianState(SVector{3}(r...), SVector{3}(v...))
 end

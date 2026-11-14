@@ -17,15 +17,12 @@ end
 """
     two_body_acceleration(r::SVector{3, T}, mu::Float64=MU_EARTH) where T
 
-Compute standard central-body gravitational acceleration with smooth singularity
-regularization to prevent ODE integrator instability during MCMC parameter exploration.
-The soft-floor ensures r_eff is never below ~R_EARTH while remaining differentiable
-everywhere (critical for ForwardDiff/NUTS HMC).
+Point-mass gravitational acceleration in km/s^2. Exact inverse-square law; any
+regularization of the r -> 0 singularity belongs in the prior, not the force model.
 """
 function two_body_acceleration(r::SVector{3, T}, mu::Float64=MU_EARTH) where T
     r_norm = norm(r)
-    r_eff = sqrt(r_norm^2 + R_EARTH^2 * exp(-r_norm / R_EARTH))
-    return -mu * r / (r_eff^3)
+    return -mu * r / (r_norm^3)
 end
 
 """

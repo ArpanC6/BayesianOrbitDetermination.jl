@@ -1,12 +1,14 @@
-# Tutorial 06: Conjunction Risk Assessment (Pc) & CCSDS CDM Export
+# Tutorial 06: Conjunction Risk Assessment (Pc) and Summary Export
+#
+# The exported file is a human-readable key-value summary, not a CCSDS CDM.
 
 using BayesianOrbitDetermination
 using LinearAlgebra
 using Printf
 using StaticArrays # Added missing import
 
-println("=== BayesianOrbitDetermination.jl Tutorial 06 ===")
-println("Target: Space Collision Probability (Pc) & CCSDS CDM Generation\n")
+println("--- BayesianOrbitDetermination.jl Tutorial 06 ---")
+println("Target: Space Collision Probability (Pc) and summary export\n")
 
 # Satellite 1 (ISS)
 r1 = SVector(6800.0, 0.0, 0.0)
@@ -24,7 +26,7 @@ pc = compute_collision_probability_foster(conj)
 @printf("Encounter Miss Distance: %.3f km (%.1f meters)\n", norm(r2 - r1), norm(r2 - r1)*1000.0)
 @printf("2D Foster-Elrod Collision Probability Pc: %.6e\n", pc)
 
-cdm_file = joinpath(@__DIR__, "sample_conjunction.cdm")
-export_ccsds_cdm(conj, pc, cdm_file)
-println("Generated CCSDS Conjunction Data Message: $(cdm_file)")
+summary_file = joinpath(@__DIR__, "sample_conjunction_summary.txt")
+export_cdm_summary(conj, pc, summary_file)
+println("Generated conjunction summary (not a CCSDS CDM): $(summary_file)")
 println("Tutorial 06 complete")

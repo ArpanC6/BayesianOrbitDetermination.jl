@@ -1,0 +1,108 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{microtype}
+\usepackage{orcidlink}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={BayesianOrbitDetermination.jl: Open-Source Bayesian Orbit Determination and Covariance Realism Suite},
+    pdfpagemode=FullScreen,
+}
+
+\title{\textbf{BayesianOrbitDetermination.jl: Open-Source Bayesian Orbit Determination and Covariance Realism Suite}}
+
+\author{
+  \textbf{Arpan Chakraborty} \\
+  Department of Computer Science and Engineering \\
+  Sikkim Global Technical University \\
+  \texttt{chakrabortyarpan151@gmail.com} \\
+  \href{https://github.com/ArpanC6}{github.com/ArpanC6} $\cdot$ \href{https://www.linkedin.com/in/arpan-chakraborty-63251227b/}{linkedin.com/in/arpan-chakraborty-63251227b}
+}
+
+\date{October 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent \texttt{BayesianOrbitDetermination.jl} is an open-source Julia package developed over two years (September 2024--2026) for probabilistic orbit determination, covariance realism, and simulation-based calibration within the Scientific Machine Learning (SciML) ecosystem. While operational flight dynamics suites primarily rely on frequentist batch least-squares with linearized covariances, whether full Bayesian posterior sampling materially improves covariance calibration under sparse ground-station tracking remains an open astrodynamics problem. The package couples high-performance differential equation solvers with No-U-Turn Sampler (NUTS) Hamiltonian Monte Carlo, variational state-transition matrix filters (EKF/UKF), Simulation-Based Calibration (SBC), and 2D Foster-Elrod collision risk integration. The orbital dynamics are cross-validated against CNES Orekit 13.1.9 to 1.2~mm ($J_2$) and 2.8~mm ($J_2$+drag) over 24-hour arcs, while the observational measurement model is validated against 98 International Laser Ranging Service (ILRS) normal points to Starlette from Yarragadee, agreeing with the independent ILRS CPF ephemeris to 7.83~m RMS over 2.74 days.
+\end{abstract}
+
+\vspace{0.5em}
+\noindent \textbf{Keywords:} Astrodynamics, Orbit Determination, Covariance Realism, Bayesian Inference, SciML, Space Situational Awareness.
+
+\section{Summary \& Motivation}
+
+Flight dynamics and space situational awareness (SSA) engines such as Orekit and MONTE rely primarily on frequentist batch least squares with linearized covariances. Under sparse ground-station tracking, where tracking passes are separated by hours, state covariance matrices frequently exhibit severe ill-conditioning ($\kappa \sim 10^{10}$), causing standard samplers to stall and frequentist optimizers to mislabel convergence.
+
+\texttt{BayesianOrbitDetermination.jl} was engineered to provide a self-contained, rigorously calibrated environment where both linearized batch estimators and full Hamiltonian Monte Carlo (HMC/NUTS) posteriors can be evaluated on identical ground truth and real-world laser ranging datasets.
+
+\section{Mathematics and Dynamics Models}
+
+The Cartesian state $\mathbf{x}(t) = [\mathbf{r}(t)^T, \mathbf{v}(t)^T]^T$ is governed by central gravitational attraction and non-conservative environmental perturbations:
+\begin{equation}
+\ddot{\mathbf{r}} = -\frac{\mu}{\|\mathbf{r}\|^3}\mathbf{r} - \nabla \left[ \frac{\mu}{r}\sum_{n=2}^{5} J_n \left(\frac{R_\oplus}{r}\right)^n P_n\!\left(\frac{z}{r}\right)\right] + \mathbf{a}_{\text{drag}} + \mathbf{a}_{\text{SRP}},
+\end{equation}
+where the zonal harmonics ($J_2$--$J_5$) are evaluated via stable Legendre recurrence. Observational tracking observables (range $\rho$ and range-rate $\dot{\rho}$) from topocentric ground stations are modeled as:
+\begin{equation}
+y_{\text{range}} \sim \mathcal{N}\left(\|\mathbf{r} - \mathbf{r}_{\text{gs}}\|, \sigma_{\text{range}}^2\right), \quad 
+y_{\text{doppler}} \sim \mathcal{N}\left(\frac{(\mathbf{r} - \mathbf{r}_{\text{gs}}) \cdot (\mathbf{v} - \mathbf{v}_{\text{gs}})}{\|\mathbf{r} - \mathbf{r}_{\text{gs}}\|} , \sigma_{\text{doppler}}^2\right).
+\end{equation}
+For Satellite Laser Ranging (SLR), two-way travel time is solved iteratively via fixed-point iteration to account for up-leg and down-leg light-time delays ($\sim$20.9~m RMS correction at LEO).
+
+\section{Whitened Bayesian Sampling in Ill-Conditioned Posteriors}
+
+To resolve geometry-induced sampler failure under sparse tracking arcs, the package introduces a covariance-whitened parameterization:
+\begin{equation}
+\mathbf{u}_0 = \mathbf{u}_{\text{BLS}} + s\,L\mathbf{z}, \quad L L^T = P_{\text{BLS}}, \quad \mathbf{z} \sim \mathcal{N}(0, I_6),
+\end{equation}
+where $\mathbf{u}_{\text{BLS}}$ and $P_{\text{BLS}}$ originate from a converged Levenberg-Marquardt fit with Gauss-Newton covariance. Whitening transforms the stiff, anisotropic geometry into an isotropic Gaussian space, enabling NUTS to achieve zero divergences and effective sample sizes of order unity relative to draw count.
+
+\section{Validation on Real ILRS Satellite Laser Ranging}
+
+To validate against flight data outside self-consistent simulations, the package ingests 98 ILRS CRD v2 normal points of the geodetic satellite Starlette from the Yarragadee station (7090) between 2025-06-09 and 2025-06-11. 
+Accounting for ground-transmit tagging (epoch event 2) and light-time travel:
+\begin{itemize}
+    \item Agreement with the independent ILRS Consolidated Prediction Format (CPF) ephemeris reaches \textbf{7.83~m RMS} (mean 4.15~m, max 19.1~m) across 15$^\circ$--66$^\circ$ elevation angles over 2.74 days.
+    \item A reduced-force batch least-squares fit converges to 24.7~m RMS on Day 1.
+\end{itemize}
+
+\section{Conjunction Assessment and International Data Standards}
+
+For orbital collision risk mitigation, the package provides:
+\begin{enumerate}
+    \item \textbf{Foster-Elrod 2D Collision Probability ($P_c$):} Rigorous 2D probability integration across combined hard-body radii, verified against 50,000-draw Monte Carlo simulations.
+    \item \textbf{CCSDS 502.0-B-2 OEM:} Full orbital ephemeris generation and parsing.
+    \item \textbf{CCSDS 508.0-B-1 CDM:} Conjunction Data Message exporter recording calendar Time of Closest Approach (TCA), relative miss distance, and 6-DOF covariance matrices in EME2000.
+    \item \textbf{ISRO NETRA SSA Simulation:} Pre-configured geodetic coordinates for ISRO tracking assets (SDSC SHAR Sriharikota, ISTRAC Bengaluru, Ponmudi radar, PRL Mount Abu SLR) simulating Indian LEO asset overpasses.
+\end{enumerate}
+
+\section{Independent Orekit Cross-Validation}
+
+The numerical propagator was cross-validated against CNES Orekit 13.1.9 using a Dormand-Prince 8(5,3) reference integrator under identical force models over 24-hour orbits:
+\begin{itemize}
+    \item Pure $J_2$: Maximum position difference of \textbf{1.2~mm} over 24~h.
+    \item $J_2$ + Atmospheric Drag: Maximum position difference of \textbf{2.8~mm} over 24~h.
+\end{itemize}
+
+\section{Availability}
+
+The package is available on GitHub under the MIT License: \\
+\url{https://github.com/ArpanC6/BayesianOrbitDetermination.jl}.
+
+\section*{Acknowledgements}
+The author thanks the SciML open-source community and the International Laser Ranging Service (ILRS) for making tracking data openly accessible.
+
+\end{document}

@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "fff92a8bae9fa6632cd1136619334c1cfeb83630"
+project_hash = "508d9877c6380a9c9f2daa1c289089d50c63ade3"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -248,7 +248,7 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
 [[deps.BayesianOrbitDetermination]]
-deps = ["DifferentialEquations", "Distributions", "ForwardDiff", "Optim", "StaticArrays", "Turing"]
+deps = ["DifferentialEquations", "Distributions", "ForwardDiff", "LinearAlgebra", "Printf", "Random", "StaticArrays", "Statistics", "Turing"]
 path = "."
 uuid = "a3f89021-4b12-4c89-912a-89bc301123fa"
 version = "0.1.0"
@@ -324,6 +324,12 @@ weakdeps = ["InverseFunctions", "Test"]
     [deps.ChangesOfVariables.extensions]
     ChangesOfVariablesInverseFunctionsExt = "InverseFunctions"
     ChangesOfVariablesTestExt = "Test"
+
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "970758a3d591a2a5c2a907c53f2e2f8c1b1d3537"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.9"
 
 [[deps.CommonSolve]]
 deps = ["PrecompileTools"]
@@ -847,6 +853,12 @@ git-tree-sha1 = "becc397f7cfb06e343496ae6ffb04818a851da51"
 uuid = "a0844989-3bd2-4988-8bea-c9407ab0941b"
 version = "1.2.0"
 
+[[deps.HTTP]]
+deps = ["Base64", "CodecZlib", "Dates", "EnumX", "Logging", "PrecompileTools", "Random", "Reseau", "SHA", "TranscodingStreams", "URIs", "UUIDs", "Zlib_jll"]
+git-tree-sha1 = "77e716661f5e911a9eca3297b80be7df847e3fdd"
+uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+version = "2.12.3"
+
 [[deps.HypergeometricFunctions]]
 deps = ["Gamma", "LinearAlgebra"]
 git-tree-sha1 = "31bb6c92405c084617facc1d7ed9eb6c402d061e"
@@ -1262,6 +1274,12 @@ deps = ["OpenLibm_jll"]
 git-tree-sha1 = "dbd2e8cd2c1c27f0b584f6661b4309609c5a685e"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "1.1.4"
+
+[[deps.NanoDates]]
+deps = ["Dates", "Parsers"]
+git-tree-sha1 = "feebceb4dcb5219c06fc510c28b37999a21caadf"
+uuid = "46f1a544-deae-4307-8689-c12aa3c955c6"
+version = "2.1.1"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
@@ -1731,11 +1749,29 @@ git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
 
+[[deps.ReferenceFrameRotations]]
+deps = ["Crayons", "LinearAlgebra", "PrecompileTools", "Printf", "Random", "StaticArrays"]
+git-tree-sha1 = "1ddb588d4dcaa8587cd20f9a4e273a071071016f"
+uuid = "74f56ac7-18b3-5285-802d-d4bd4f104033"
+version = "3.5.0"
+
+    [deps.ReferenceFrameRotations.extensions]
+    ReferenceFrameRotationsZygoteExt = "Zygote"
+
+    [deps.ReferenceFrameRotations.weakdeps]
+    Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
 [[deps.Requires]]
 deps = ["UUIDs"]
 git-tree-sha1 = "62389eeff14780bfe55195b7204c0d8738436d64"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.1"
+
+[[deps.Reseau]]
+deps = ["NetworkOptions", "OpenSSL_jll", "PrecompileTools", "Random", "SHA"]
+git-tree-sha1 = "c1332beecf9cf267e99b83ab878a3460f047964f"
+uuid = "802f3686-a58f-41ce-bb0c-3c43c75bba36"
+version = "1.6.1"
 
 [[deps.RespecializeParams]]
 deps = ["FunctionWrappersWrappers", "PrecompileTools"]
@@ -1786,6 +1822,34 @@ version = "0.5.27"
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
+
+[[deps.SatelliteToolboxBase]]
+deps = ["Dates", "LinearAlgebra", "PrecompileTools", "ReferenceFrameRotations", "StaticArrays", "StyledStrings"]
+git-tree-sha1 = "e9389ac10fda577ff2d971bb683f7d37f6419ee3"
+uuid = "9e17983a-0463-41a7-9a16-1682db6d8b66"
+version = "2.1.0"
+
+[[deps.SatelliteToolboxOrbitDataMessages]]
+deps = ["Dates", "HTTP", "NanoDates", "PrecompileTools", "SatelliteToolboxBase", "Scratch", "Serialization", "StaticArrays", "URIs", "XML"]
+git-tree-sha1 = "8f4ae80d33ed15a36eedb736d767f97f3f2c047e"
+uuid = "8a75e93c-a5f1-4885-96e0-0415d9bb1562"
+version = "0.2.1"
+weakdeps = ["SatelliteToolboxTle"]
+
+    [deps.SatelliteToolboxOrbitDataMessages.extensions]
+    SatelliteToolboxTleExt = "SatelliteToolboxTle"
+
+[[deps.SatelliteToolboxSgp4]]
+deps = ["Dates", "ForwardDiff", "LinearAlgebra", "NanoDates", "PrecompileTools", "Printf", "Reexport", "SatelliteToolboxBase", "SatelliteToolboxOrbitDataMessages", "SatelliteToolboxTle", "StaticArrays", "StyledStrings"]
+git-tree-sha1 = "407b024f124e0640c52c70ced31b3a7920603a65"
+uuid = "ba14ac17-bfc9-4710-a76f-b32930ef2339"
+version = "3.0.0"
+
+[[deps.SatelliteToolboxTle]]
+deps = ["Dates", "Downloads", "PrecompileTools", "SatelliteToolboxBase", "URIs"]
+git-tree-sha1 = "f8671128c8bde7f70e6442890996fdc8096b3d16"
+uuid = "7ff27aeb-5fff-4337-a9ee-a9fe6b7ed35e"
+version = "2.0.0"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FindFirstFunctions", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "LoggingExtras", "Markdown", "PreallocationTools", "PrecompileTools", "Preferences", "Printf", "Random", "RecipesBase", "RecursiveArrayTools", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLPublic", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
@@ -1888,6 +1952,12 @@ deps = ["InteractiveUtils"]
 git-tree-sha1 = "e785eaa35a0f5518a388f9010e66fda64ea95ede"
 uuid = "30f210dd-8aff-4c5f-94ba-8e64358c1161"
 version = "3.1.0"
+
+[[deps.Scratch]]
+deps = ["Dates"]
+git-tree-sha1 = "9b81b8393e50b7d4e6d0a9f14e192294d3b7c109"
+uuid = "6c6a2e73-6563-6170-7368-637461726353"
+version = "1.3.0"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -2145,6 +2215,11 @@ version = "1.2.2"
     [deps.TimerOutputs.weakdeps]
     FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
 
+[[deps.TranscodingStreams]]
+git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
+uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+version = "0.11.3"
+
 [[deps.TruncatedStacktraces]]
 deps = ["InteractiveUtils", "MacroTools", "Preferences"]
 git-tree-sha1 = "ea3e54c2bdde39062abf5a9758a23735558705e1"
@@ -2166,6 +2241,12 @@ version = "0.49.0"
     DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
     MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
 
+[[deps.URIs]]
+deps = ["Serialization"]
+git-tree-sha1 = "50eda8011f098869a76da69a524ff59e0298711a"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.7.2"
+
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -2174,6 +2255,15 @@ version = "1.11.0"
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
+
+[[deps.XML]]
+git-tree-sha1 = "92e8ddd9edfd0f374ec738689cbd1d50abfbf01e"
+uuid = "72c71f33-b9b6-44de-8c94-c961784809e2"
+version = "0.4.6"
+weakdeps = ["AbstractTrees"]
+
+    [deps.XML.extensions]
+    XMLAbstractTreesExt = "AbstractTrees"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]

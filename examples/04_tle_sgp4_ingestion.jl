@@ -3,7 +3,7 @@
 using BayesianOrbitDetermination
 using Printf
 
-println("=== BayesianOrbitDetermination.jl Tutorial 04 ===")
+println("--- BayesianOrbitDetermination.jl Tutorial 04 ---")
 println("Target: ISS TLE Parsing & SGP4 Dynamics Ingestion\n")
 
 tle_line1 = "1 25544U 98067A   26270.50000000  .00016717  00000-0  30000-3 0  9993"
@@ -16,4 +16,4 @@ tle = parse_tle(tle_line1, tle_line2, "ISS (ZARYA)")
 c_sgp4 = propagate_sgp4(tle, 1800.0) # 30 min propagation
 @printf("SGP4 Position at +30 min (km): [%.2f, %.2f, %.2f]\n", c_sgp4.r[1], c_sgp4.r[2], c_sgp4.r[3])
 
-println("\nTutorial 04 complete successfully!")
+println("\nTutorial 04 complete successfully")

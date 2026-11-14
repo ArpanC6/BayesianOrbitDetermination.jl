@@ -9,6 +9,8 @@ struct OrbitPropagatorOptions
     area_to_mass::Float64 # m^2/kg
     reltol::Float64
     abstol::Float64
+    epoch_jd::Float64
+    include_j3j4::Bool
 end
 
 function OrbitPropagatorOptions(;
@@ -18,11 +20,14 @@ function OrbitPropagatorOptions(;
     Cd::Float64 = 2.2,
     Cr::Float64 = 1.2,
     area_to_mass::Float64 = 0.01,
-    reltol::Float64 = 1e-12,
-    abstol::Float64 = 1e-12,
+    reltol::Float64 = 1e-9,
+    abstol::Float64 = 1e-9,
+    epoch_jd::Float64 = 2451545.0,
+    include_j3j4::Bool = false,
 )
     return OrbitPropagatorOptions(
         include_j2, include_drag, include_srp, Cd, Cr, area_to_mass, reltol, abstol,
+        epoch_jd, include_j3j4,
     )
 end
 
@@ -45,13 +50,16 @@ function orbit_dynamics(u, p, t)
     a_tot = two_body_acceleration(r, mu)
 
     if opts.include_j2
-        a_tot += j2_perturbation(r; mu = mu)
+        a_tot += opts.include_j3j4 ?
+            zonal_harmonic_perturbation(r; mu = mu) :
+            j2_perturbation(r; mu = mu)
     end
     if opts.include_drag
         a_tot += drag_perturbation(r, v, opts.Cd, opts.area_to_mass)
     end
     if opts.include_srp
-        a_tot += srp_perturbation(r, opts.Cr, opts.area_to_mass)
+        a_tot += srp_perturbation(r, t, opts.Cr, opts.area_to_mass;
+                                  epoch_jd = opts.epoch_jd)
     end
 
     T = eltype(u)

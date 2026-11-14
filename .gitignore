@@ -11,3 +11,13 @@ docs/site/
 Thumbs.db
 *.swp
 *.tmp
+
+# Orekit cross-validation: jars/data are downloaded locally, reference CSVs are committed
+validation/orekit/lib/
+validation/orekit/orekit-data-main/
+validation/orekit/*.zip
+validation/orekit/*.class
+
+# SBC shard artifacts (regenerable; merged outputs are committed)
+benchmarks/sbc_shards/
+benchmarks/sbc_logs/

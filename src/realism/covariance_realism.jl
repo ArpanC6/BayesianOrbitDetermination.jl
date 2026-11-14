@@ -10,19 +10,18 @@ using Distributions
 Compute squared Mahalanobis distance D^2 = (u_true - u_est)^T * Cov^-1 * (u_true - u_est).
 Under realistic Gaussian covariance assumptions, D^2 follows a Chi-Square distribution with n degrees of freedom.
 """
-function compute_mahalanobis_distance(u_true::Vector{Float64}, u_est::Vector{Float64}, Cov::Matrix{Float64})
+function compute_mahalanobis_distance(u_true::AbstractVector{Float64}, u_est::AbstractVector{Float64}, Cov::AbstractMatrix{Float64})
     diff = u_true - u_est
     Cov_sym = Symmetric((Cov + Cov') / 2)
-    inv_cov = try
-        inv(Cov_sym)
-    catch
-        pinv(Matrix(Cov_sym))
+    # Solving the triangular system keeps d^2 = ||L^-1 diff||^2 >= 0; forming
+    # inv(Cov) explicitly can return a negative value when Cov is ill-conditioned.
+    F = cholesky(Cov_sym; check = false)
+    d2 = if issuccess(F)
+        dot(diff, F \ diff)
+    else
+        dot(diff, pinv(Matrix(Cov_sym)) * diff)
     end
-    d2 = dot(diff, inv_cov * diff)
-    if d2 < 0
-        @warn "Mahalanobis D² computed negative — covariance likely near-singular" d2
-    end
-    return d2
+    return max(d2, 0.0)
 end
 
 """
@@ -50,7 +49,7 @@ end
 
 Assess covariance realism using Mahalanobis distance Chi-Square test and 90% credible interval coverage.
 """
-function EvaluateCovarianceRealism(u_true::Vector{Float64}, posterior_samples::Matrix{Float64}, estimated_cov::Matrix{Float64})
+function EvaluateCovarianceRealism(u_true::AbstractVector{Float64}, posterior_samples::AbstractMatrix{Float64}, estimated_cov::AbstractMatrix{Float64})
     u_mean = vec(mean(posterior_samples, dims=1))
     d2 = compute_mahalanobis_distance(u_true, u_mean, estimated_cov)
 

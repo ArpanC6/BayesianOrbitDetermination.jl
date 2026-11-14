@@ -4,7 +4,7 @@ using BayesianOrbitDetermination
 using Printf
 using Random
 
-println("=== BayesianOrbitDetermination.jl Tutorial 07 ===")
+println("--- BayesianOrbitDetermination.jl Tutorial 07 ---")
 println("Target: NASA LaRC UQ Challenge Problem Epistemic vs Aleatory Bounds\n")
 
 u_true = [6900.0, 0.0, 0.0, 0.0, 7.5, 0.0]
@@ -19,4 +19,4 @@ uq_res = solve_nasa_larc_uq_subproblem(samples, u_true)
 @printf("Aleatory Standard Deviation: %.4f km\n", uq_res.aleatory_std)
 @printf("Mission Reliability (Error < 100m): %.2f%%\n", uq_res.reliability_index * 100.0)
 
-println("Tutorial 07 complete!")
+println("Tutorial 07 complete")

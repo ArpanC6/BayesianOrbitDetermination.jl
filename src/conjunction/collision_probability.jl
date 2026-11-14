@@ -82,3 +82,57 @@ function compute_collision_probability_foster(conj::ConjunctionEvent)
 
     return pc_sum
 end
+
+"""
+    compute_collision_probability_monte_carlo(conj::ConjunctionEvent; n_samples::Int = 100_000, seed::Int = 42) -> Tuple{Float64, Float64}
+
+Compute 2D Collision Probability (Pc) via direct Monte Carlo simulation in the encounter plane.
+Returns `(pc_estimate, standard_error)`. Used as an independent reference to cross-validate
+analytical and numerical quadrature schemes like [`compute_collision_probability_foster`](@ref).
+"""
+function compute_collision_probability_monte_carlo(conj::ConjunctionEvent; n_samples::Int = 100_000, seed::Int = 42)
+    Random.seed!(seed)
+    r_rel = conj.r2_eci - conj.r1_eci
+    v_rel = conj.v2_eci - conj.v1_eci
+    v_rel_norm = norm(v_rel)
+
+    if v_rel_norm < 1e-6
+        return (0.0, 0.0)
+    end
+
+    y_enc = v_rel / v_rel_norm
+    z_enc = cross(r_rel, v_rel)
+    z_enc = norm(z_enc) > 1e-9 ? z_enc / norm(z_enc) : SVector(0.0, 0.0, 1.0)
+    x_enc = cross(y_enc, z_enc)
+
+    R_enc = SMatrix{3, 3}([x_enc'; y_enc'; z_enc'])
+    C_combined_eci = conj.cov1_eci[1:3, 1:3] + conj.cov2_eci[1:3, 1:3]
+    C_enc = R_enc * C_combined_eci * R_enc'
+
+    C_2d = Symmetric([C_enc[1, 1] C_enc[1, 3]; C_enc[3, 1] C_enc[3, 3]])
+    r_2d = [dot(r_rel, x_enc), dot(r_rel, z_enc)]
+    r_hb_km = conj.hard_body_radius_m * 1e-3
+
+    L_2d = try
+        Matrix(cholesky(C_2d).L)
+    catch
+        evals, evecs = eigen(C_2d)
+        evals_pos = max.(evals, 1e-12)
+        evecs * diagm(sqrt.(evals_pos))
+    end
+
+    hits = 0
+    for _ in 1:n_samples
+        z1 = randn()
+        z2 = randn()
+        px = r_2d[1] + L_2d[1, 1] * z1 + L_2d[1, 2] * z2
+        pz = r_2d[2] + L_2d[2, 1] * z1 + L_2d[2, 2] * z2
+        if px^2 + pz^2 <= r_hb_km^2
+            hits += 1
+        end
+    end
+
+    pc_hat = hits / n_samples
+    se = sqrt(pc_hat * (1.0 - pc_hat) / n_samples)
+    return (pc_hat, se)
+end

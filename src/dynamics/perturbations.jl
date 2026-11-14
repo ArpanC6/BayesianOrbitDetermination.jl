@@ -21,7 +21,9 @@ end
 """
     atmospheric_density_exponential(alt_km::T) where T
 
-Simple exponential atmospheric density model.
+Simple exponential atmospheric density model. Returns density in kg/km^3,
+which is the unit that combines with `area_to_mass` in km^2/kg in
+[`drag_perturbation`](@ref) to give acceleration in km/s^2.
 """
 function atmospheric_density_exponential(alt_km::T) where T
     if alt_km < 0.0
@@ -54,19 +56,56 @@ function drag_perturbation(r::SVector{3, T}, v::SVector{3, T}, Cd::Float64, area
 end
 
 """
-    srp_perturbation(r::SVector{3, T}, Cr::Float64, area_to_mass::Float64) where T
+    sun_direction_eci(jd_utc) -> SVector{3, Float64}
 
-Compute Solar Radiation Pressure acceleration (km/s^2).
+Unit vector from the Earth toward the Sun in the mean equator and equinox of
+date, from the low-precision solar ephemeris in Vallado (2013). Accurate to
+about 0.01 deg, which is ample for solar radiation pressure.
 """
-function srp_perturbation(r::SVector{3, T}, Cr::Float64, area_to_mass::Float64) where T
-    s_sun = SVector{3, T}(1.0, 0.0, 0.0)
-    P_sun_km = 4.56e-6 * 1e-3
-    A_m_km2 = area_to_mass * 1e-6
-    
+function sun_direction_eci(jd_utc::Float64)
+    T = (jd_utc - 2451545.0) / 36525.0
+    L = deg2rad(mod(280.460 + 36000.771 * T, 360.0))
+    M = deg2rad(mod(357.5291092 + 35999.05034 * T, 360.0))
+    lambda = L + deg2rad(1.914666471) * sin(M) + deg2rad(0.019994643) * sin(2M)
+    eps = deg2rad(23.439291 - 0.0130042 * T)
+    return SVector(cos(lambda), cos(eps) * sin(lambda), sin(eps) * sin(lambda))
+end
+
+"""
+    sun_distance_au(jd_utc) -> Float64
+
+Earth-Sun distance in astronomical units from the same low-precision
+ephemeris as [`sun_direction_eci`](@ref).
+"""
+function sun_distance_au(jd_utc::Float64)
+    T = (jd_utc - 2451545.0) / 36525.0
+    M = deg2rad(mod(357.5291092 + 35999.05034 * T, 360.0))
+    return 1.000140612 - 0.016708617 * cos(M) - 0.000139589 * cos(2M)
+end
+
+"""
+    srp_perturbation(r, t, Cr, area_to_mass; epoch_jd = 2451545.0)
+
+Compute Solar Radiation Pressure acceleration (km/s^2) at `t` seconds from the
+epoch whose Julian date is `epoch_jd`. The Sun direction follows the
+low-precision ephemeris and the acceleration is scaled by the inverse square
+of the Earth-Sun distance. A cylindrical shadow model zeroes the acceleration
+when the satellite is behind the Earth.
+
+`area_to_mass` is in m^2/kg. The solar pressure at 1 AU is 4.56e-6 N/m^2.
+"""
+function srp_perturbation(r::SVector{3, T}, t, Cr::Float64,
+                          area_to_mass::Float64; epoch_jd::Float64 = 2451545.0) where T
+    jd = epoch_jd + t / 86400.0
+    s_sun = SVector{3, T}(sun_direction_eci(jd))
+    au_ratio = sun_distance_au(jd)
+    P_sun = 4.56e-6 / au_ratio^2          # N/m^2
+    a_srp = Cr * P_sun * area_to_mass * 1e-3  # km/s^2
+
     proj = dot(r, s_sun)
     if proj < 0.0 && norm(r - proj * s_sun) < R_EARTH
         return SVector{3, T}(0.0, 0.0, 0.0)
     end
-    
-    return Cr * P_sun_km * A_m_km2 * s_sun
+
+    return a_srp * s_sun
 end
