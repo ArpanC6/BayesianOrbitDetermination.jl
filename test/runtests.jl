@@ -51,7 +51,6 @@ Random.seed!(42)
         cart = kepler_to_cartesian(kep)
         u0 = [cart.r...; cart.v...]
 
-        # Mean anomaly at epoch, then invert Kepler's equation at each time.
         n = sqrt(MU_EARTH / kep.a^3)
         E0 = 2 * atan(sqrt((1 - kep.e) / (1 + kep.e)) * tan(kep.nu / 2))
         M0 = E0 - kep.e * sin(E0)
@@ -69,7 +68,7 @@ Random.seed!(42)
 
             sol = propagate_orbit(u0, (0.0, dt), [dt], opts)
             err_km = norm(SVector{3}(sol.u[end][1:3]...) - analytic.r)
-            @test err_km < 1e-3   # 1 m over up to one day; measured ~2e-6 km
+            @test err_km < 1e-3
         end
     end
 
@@ -99,7 +98,6 @@ Random.seed!(42)
         r = SVector(3205.83, 4997.61, 3488.02)
         @test zonal_harmonic_perturbation(r; n_max = 2) ≈ j2_perturbation(r) rtol = 1e-12
 
-        # a = -grad U with U = mu/r * sum J_n (R/r)^n P_n(z/r)
         function potential(x)
             rn = norm(x)
             u = x[3] / rn
@@ -128,8 +126,6 @@ Random.seed!(42)
         c_prop = propagate_sgp4(tle, 600.0)
         @test norm(c_prop.r) > 6000.0
 
-        # Regression vector from SatelliteToolboxSgp4 3.0.0 (Vallado SGP4);
-        # this is the real SGP4 output in TEME, not a Kepler + J2 approximation.
         c30 = propagate_sgp4(tle, 1800.0)
         @test isapprox(c30.r, SVector(4445.342816822122, -1907.3060317047552,
                                       4762.608537289984); atol = 1e-6)
@@ -224,7 +220,6 @@ Random.seed!(42)
         @test isfile(tmp_summary)
         @test occursin("NOT a CCSDS", read(tmp_summary, String))
 
-        # Full CCSDS 508.0-B-1 CDM export
         tmp_cdm = joinpath(tempdir(), "test_conjunction.cdm")
         export_ccsds_cdm(conj, pc, tmp_cdm)
         @test isfile(tmp_cdm)
@@ -234,7 +229,6 @@ Random.seed!(42)
         @test occursin("OBJECT = OBJECT2", cdm_content)
         @test occursin("COLLISION_PROBABILITY", cdm_content)
 
-        # Monte Carlo Collision Probability validation
         pc_mc, pc_mc_se = compute_collision_probability_monte_carlo(conj; n_samples = 5000)
         @test 0.0 <= pc_mc <= 1.0
         @test isapprox(pc, pc_mc, atol = 3 * max(pc_mc_se, 0.02))
@@ -265,14 +259,12 @@ Random.seed!(42)
         bengaluru = get_isro_station(:BANGALORE_ISTRAC)
         @test bengaluru.name == "ISTRAC_Bengaluru"
 
-        # GMST test
         gmst = gmst_rad(0.0)
         @test 0.0 <= gmst <= 2pi
 
-        # ITRF to ECI conversion
         r_itrf = SVector(6378.137, 0.0, 0.0)
-        r_eci = itrf_to_eci_state(r_itrf, 0.0)
-        @test isapprox(norm(r_eci), 6378.137, atol = 1e-4)
+        r_eci = itrf_to_eci_state(r_itrf, SVector(0.0, 0.0, 0.0), 0.0)
+        @test isapprox(norm(r_eci[1]), 6378.137, atol = 1e-4)
     end
 
     @testset "NASA LaRC UQ Challenge Solver" begin
@@ -311,7 +303,7 @@ Random.seed!(42)
         @test cpf.mjd[1] == 60835.0
         @test issorted(cpf.mjd)
         @test size(cpf.r_itrf_km, 2) == 3
-        @test 7300.0 < norm(cpf.r_itrf_km[1, :]) < 7600.0  # Starlette orbit radius
+        @test 7300.0 < norm(cpf.r_itrf_km[1, :]) < 7600.0
 
         mjd, rng = parse_slr_normal_points(
             [joinpath(data_dir, "starlette_20250609.np2")]; station = "YARL")
@@ -320,8 +312,6 @@ Random.seed!(42)
         @test all(500.0 .< rng .< 4500.0)
         @test 60835.0 < mjd[1] < 60836.0
 
-        # CRD record 11 epoch events: 0 = receive, 1 = bounce, 2 = transmit.
-        # The parser returns reception epochs.
         mktempdir() do dir
             path = joinpath(dir, "epochs.np2")
             open(path, "w") do io
@@ -332,11 +322,11 @@ Random.seed!(42)
                 end
             end
             mjd_ev, rng_ev = parse_slr_normal_points([path]; station = "TEST")
-            @test length(mjd_ev) == 3          # one-way event 3 skipped
+            @test length(mjd_ev) == 3
             @test rng_ev ≈ fill(BayesianOrbitDetermination.C_LIGHT_KM_S * 0.005, 3)
-            @test (mjd_ev[1] - 60835.0) * 86400 ≈ 1000.0           # receive
-            @test (mjd_ev[2] - 60835.0) * 86400 ≈ 1000.005         # bounce + tof/2
-            @test (mjd_ev[3] - 60835.0) * 86400 ≈ 1000.010         # transmit + tof
+            @test (mjd_ev[1] - 60835.0) * 86400 ≈ 1000.0
+            @test (mjd_ev[2] - 60835.0) * 86400 ≈ 1000.005
+            @test (mjd_ev[3] - 60835.0) * 86400 ≈ 1000.010
         end
     end
 
@@ -399,7 +389,6 @@ Random.seed!(42)
         C = Matrix(Diagonal([1.0, 2.0, 3.0, 0.1, 0.1, 0.1]))
         L = cholesky(Symmetric(C)).L
 
-        # A calibrated covariance puts D^2 at chi-square(6) on average.
         d2 = [compute_mahalanobis_distance(L * randn(6), zeros(6), C) for _ in 1:200]
         @test 5.2 < mean(d2) < 6.8
 
@@ -409,7 +398,6 @@ Random.seed!(42)
         @test count(ev.coverage_90) >= 4
         @test 0.0 <= ev.p_value_gof <= 1.0
 
-        # Ill-conditioned covariances must not produce a negative squared distance.
         C_ill = Matrix(Diagonal([1e-18, 1e-18, 1e-18, 1.0, 1.0, 1.0]))
         @test compute_mahalanobis_distance(ones(6), zeros(6), C_ill) >= 0.0
     end
@@ -419,14 +407,11 @@ Random.seed!(42)
         n = 1000
         n_draws = 500
 
-        # Ranks live on 0:n_draws; binning must use the draw count, not the
-        # number of simulations.
         uniform_ranks = rand(0:n_draws, n, 6)
         res = sbc_uniformity_test(uniform_ranks; n_draws = n_draws)
         @test all(res.p_value .> 0.001)
         @test res.dof == 9
 
-        # Ranks confined to the lower half of 0:n_draws are not uniform.
         clustered = rand(0:(n_draws ÷ 2), n, 6)
         res_clustered = sbc_uniformity_test(clustered; n_draws = n_draws)
         @test all(res_clustered.p_value .< 1e-6)
@@ -471,9 +456,8 @@ Random.seed!(42)
             got = reduce(vcat, permutedims.(collect.(sol.u)))
             dp = maximum(norm(got[i, 1:3] .- ref[i, 1:3]) for i in eachindex(t))
             dv = maximum(norm(got[i, 4:6] .- ref[i, 4:6]) for i in eachindex(t))
-            # Orekit DP8(5,3) reference; measured differences are a few mm.
-            @test dp < 0.05  # m
-            @test dv < 1e-5  # m/s
+            @test dp < 0.05
+            @test dv < 1e-5
         end
     end
 
