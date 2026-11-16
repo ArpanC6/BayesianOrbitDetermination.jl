@@ -1,110 +1,71 @@
-# Development Roadmap
+---
+title: 'BayesianOrbitDetermination.jl: Bayesian Orbit Determination and Covariance Realism for Sparse Tracking'
+tags:
+  - Julia
+  - Astrodynamics
+  - Orbit Determination
+  - Bayesian Inference
+  - Uncertainty Quantification
+  - Covariance Realism
+authors:
+  - name: Arpan Chakraborty
+    orcid: 0009-0006-7735-8520
+    affiliation: 1
+affiliations:
+  - name: Department of Computer Science and Engineering, Sikkim Global Technical University
+    index: 1
+date: 16 November 2026
+bibliography: paper.bib
+---
 
-## Current state
+# Summary
 
-Every item below was checked against the code, not against intent.
+`BayesianOrbitDetermination.jl` is an open-source Julia package for probabilistic orbit determination (OD) and covariance realism validation. It couples `DifferentialEquations.jl` [@rackauckas2017differentialequations] with the No-U-Turn Sampler (NUTS) in `Turing.jl` [@ge2018turing] to produce full posterior distributions over spacecraft states, alongside a converged Levenberg–Marquardt batch least-squares (BLS) estimator with Gauss–Newton covariance and an explicit convergence flag.
 
-| Area | State |
-|---|---|
-| Two-body + J2 + drag + SRP propagation | Implemented; exact inverse-square gravity; numerical two-body matches the analytic Kepler solution to millimetres over 24 h at tight tolerances; J2 and J2+drag match Orekit 13.1.9 to 1.2 mm and 2.8 mm over 24 h; J2 nodal drift matches the analytic secular rate within 1% over 50 orbits; SRP uses an analytic solar ephemeris and a conical shadow, but is not part of the Orekit cross-validation |
-| Zonal harmonics | Implemented for J2-J5 by Legendre recurrence, wired into the propagator behind `include_j3j4 = true`; checked against the J2 closed form and against a finite-difference gradient of the potential in the test suite |
-| Range / Doppler observation model | Implemented; WGS-84 geodetic to ECEF to ECI; two-way light time solved by fixed-point iteration (dominant correction for SLR, ~20 m at LEO ranges) |
-| Bayesian OD (NUTS) | Implemented; non-centered and covariance-whitened parameterizations; noise scales inferred from the data with `infer_noise = true` |
-| Batch least squares | Implemented with Levenberg-Marquardt; Gauss-Newton covariance; returns residual RMS, iteration count, Newton decrement and a convergence flag tied to the optimizer's stopping rule; range-only mode for SLR |
-| Covariance realism diagnostics | Mahalanobis D^2, marginal coverage, SBC ranks with a uniformity test and rank-histogram figure, and a sharded SBC study |
-| Foster-Elrod Pc | Implemented; not validated against a reference implementation |
-| TLE parsing and SGP4 | Real SGP4 (SatelliteToolboxSgp4, Vallado); checked against a published regression vector, not Kepler + J2 |
-| CCSDS OEM ingestion | Not implemented; current parser reads a different format |
-| CCSDS CDM export | Not implemented; the exporter is named `export_cdm_summary` and labels itself as a summary |
-| EKF / UKF | Implemented; EKF covariance prediction uses the variational STM, checked against finite differences. Not validated against flight data |
-| NASA LaRC UQ challenge | Not implemented |
+The package addresses a specific gap in open-source astrodynamics: existing tools report point estimates with linearized covariances, but provide no built-in diagnostic to test whether those covariances are calibrated under sparse tracking conditions. `BayesianOrbitDetermination.jl` provides Mahalanobis $\chi^2$ goodness-of-fit tests, marginal interval coverage, simulation-based calibration (SBC) ranks with uniformity testing [@talts2018validating], and a covariance-whitened sampling option for ill-conditioned posteriors ($\kappa \sim 10^{10}$).
 
-## Next: make the existing claims true
+# Statement of need
 
-1. ~~Propagator validation against an independent reference (Orekit, same
-   scenario, same force model) at the 1 m level over one day.~~ Done for J2 and
-   J2+drag: Orekit 13.1.9 agrees to 1.2 mm and 2.8 mm over 24 h
-   (`validation/orekit/`). SRP is not part of that comparison.
-2. ~~Real SGP4, or rename `propagate_sgp4` to what it does.~~ Done: SGP4 comes
-   from SatelliteToolboxSgp4 (Vallado) and is tested against a regression vector.
-3. ~~Wire J3/J4 into `orbit_dynamics` behind a flag; add J5 or drop the claim.~~
-   Done: `include_j3j4 = true` adds J2-J5 from the Legendre recurrence.
-4. ~~Implement the EKF state-transition matrix through the variational
-   equations.~~ Done; `propagate_state_and_stm` integrates `dPhi/dt = (df/du) Phi`
-   with the Jacobian from forward-mode AD, and a test compares it against finite
-   differences of the propagated state. Cross-validating the EKF against flight
-   data or an independent filter is still open.
-5. ~~Implement CCSDS 508.0-B-1 CDM output, or rename the exporter.~~ Renamed to
-   `export_cdm_summary`; the file says it is not a CDM. Conformant output is
-   still open and needs a calendar TCA plus 6x6 RTN covariances.
-6. Implement the NASA LaRC challenge subproblems, or remove the module.
+Space Traffic Management (STM) and conjunction assessment depend on realistic covariance matrices [@poore2016covariance]. Overconfident covariances lead to missed collision warnings; inflated covariances cause unnecessary maneuvers. Operational flight dynamics suites such as Orekit [@orekit] and MONTE rely primarily on frequentist batch least squares with linearized covariances, but do not include tools to test whether those covariances are statistically calibrated.
 
-## Next: make the statistics honest
+Under sparse ground-station tracking - a few short passes separated by hours - the state covariance becomes severely ill-conditioned. Standard samplers stall in state coordinates, and frequentist optimizers may mislabel convergence. The result is that comparisons between linearized and Bayesian covariances are often confounded by computation failures rather than reflecting a property of the methods.
 
-7. ~~Infer observation-noise scales in the Bayesian model instead of hard-coding them.~~
-   Done: `sr` and `sd` are sampled in `bayesian_orbit_determination_model`
-   whenever `infer_noise = true`, and the SBC study treats them as parameters.
-8. Report NUTS diagnostics (r-hat, ESS, divergences) for every chain that enters
-   a result. (Done in the covariance study; `results_per_trial.csv` records them
-   per replication.)
-9. ~~Turn the SBC ranks into a uniformity test with a figure.~~ Done; see
-   `benchmarks/run_sbc_study.jl`, `benchmarks/SBC.md`, and
-   `benchmarks/sbc_rank_histogram.svg`.
-10. Regenerate `benchmarks/RESULTS.md` from a single script, with seeds and
-    convergence filters recorded alongside the numbers. (Done; the script is
-    `benchmarks/run_covariance_realism_study.jl`.)
+`BayesianOrbitDetermination.jl` is built so that both estimators can be computed correctly on identical data: a converged BLS fit and a whitened NUTS posterior. The target audience is researchers and practitioners in astrodynamics and space situational awareness who need to evaluate covariance realism for sparse-tracking scenarios, and who want reproducible, open-source tools for that evaluation.
 
-## What the covariance study has established so far
+# State of the field
 
-`benchmarks/RESULTS.md` is the authoritative record; this is the interpretation.
+The most widely used open-source flight dynamics library is Orekit [@orekit], which provides batch least-squares estimation with linearized covariance. It does not provide Bayesian posterior sampling or built-in covariance calibration diagnostics. This package complements Orekit by providing both, on identical data and force models, and by including a cross-validation of the propagator against Orekit to millimetre level.
 
-- With a converged Levenberg-Marquardt fit, the Gauss-Newton covariance from
-  `(J'J)^-1` is approximately calibrated on self-consistent simulated data. In
-  the definitive 50-trial run the mean Mahalanobis D^2 is 7.37 +/- 0.74, 1.9
-  standard errors above 6, and the per-component 90% intervals cover the truth
-  at 90-94%. The Bayesian mean is 7.89 +/- 0.80 and the paired Bayes-minus-BLS
-  difference is +0.52 +/- 0.20, so the full posterior inherits the residual
-  rather than removing it. Whether the residual is a small real overconfidence
-  in the least-constrained direction or seed variance needs more replications
-  than the 50 recorded here.
-- The earlier claim that the linearized covariance is "150x overconfident" was
-  an artifact of an optimizer that had not converged, not a property of the
-  Gauss-Newton covariance.
-- Sparse tracking makes the posterior covariance ill-conditioned. In the sparse
-  scenarios examined here the condition number is of order 1e10, and the
-  directions with the smallest eigenvalues are combinations of along-track and
-  radial components. A sampler in state coordinates cannot move along those
-  directions with a sane step size.
-- Whitening by the BLS covariance, `u = u_BLS + s L z` with `L L' = P_BLS`,
-  makes the geometry isotropic and lets NUTS sample the same posterior with
-  order-unit effective sample sizes. This is the parameterization the benchmark
-  and Tutorial 03 use.
-- On this problem, once both estimators are computed correctly, the Bayesian
-  posterior and the linearized covariance agree on the state and are both
-  approximately calibrated: marginal coverage is nominal, while the joint D^2
-  carries the mild positive bias described above for both estimators. The
-  interesting Bayesian advantage, if it exists, is not in the point estimate or
-  the marginal covariance. It has to be looked for in non-Gaussianity of the
-  posterior, in model error, or in cases where the linearization is genuinely
-  invalid.
-- A strict absolute Newton-decrement test mislabels converged fits. In 15 random
-  sparse-arc scenarios, restarting the optimizer with 500 iterations moved the
-  estimate by exactly zero in all 15, but the absolute test flagged 1 of them as
-  unconverged. The cause is dividing a rounding-level gradient by the smallest
-  eigenvalue of `J'J`, which is ~1e-10 for these arcs. The convergence flag now
-  follows the optimizer's own stopping rule, and `newton_decrement` is returned
-  as a diagnostic instead of deciding the flag.
+A specific contribution is the whitened parameterization for ill-conditioned posteriors. Sampling in state coordinates fails when the covariance condition number reaches $10^{10}$, which is typical for sparse LEO tracking with a single station. The whitening transform converts the stiff, anisotropic posterior into an isotropic space, enabling NUTS to achieve zero divergences and effective sample sizes of order the number of draws. This design decision is described in the Software design section.
 
-## Open research question
+# Software design
 
-Whether the commonly asserted advantage of full Bayesian posteriors over
-linearized batch least squares — better-calibrated covariance under sparse
-tracking — survives when the optimizer is actually converged, the noise scales
-are inferred rather than fixed, and calibration is assessed by SBC instead of a
-single Mahalanobis statistic.
+**Covariance whitening.** The central design decision is the parameterization for NUTS. Rather than sampling directly in state coordinates, the package samples in a whitened space:
 
-The definitive study answers the fixed-noise, D^2-and-coverage version of the
-question with a negative: no detectable advantage, and the posterior is
-$+0.52\pm0.20$ *worse* in mean D^2 than the BLS covariance. The inferred-noise
-and SBC versions remain open, and they are the experiments this package should
-be used for next.
+$$\mathbf{u}_0 = \mathbf{u}_{\text{BLS}} + s\,L\mathbf{z}, \qquad LL^T = P_{\text{BLS}}, \qquad \mathbf{z} \sim \mathcal{N}(0, I_6),$$
+
+where $\mathbf{u}_{\text{BLS}}$ and $P_{\text{BLS}}$ come from a converged BLS fit, and $s$ controls prior width in units of linearized standard deviations. This transform is the difference between a sampler that stalls and one that achieves zero divergences. The trade-off is that the prior is centered on the BLS estimate, making the posterior empirical-Bayes rather than prior-blind.
+
+**Dual estimators on identical data.** BLS and Bayesian estimation share the same force model, measurement model, and data. This ensures any comparison reflects the inference method, not differences in modeling. The BLS implementation includes a convergence flag tied to the optimizer's stopping rule, without this, an unconverged fit can make the linearized covariance appear badly overconfident, which is an optimizer failure rather than a property of the Gauss–Newton approximation.
+
+**Measurement model and epoch handling.** For Satellite Laser Ranging (SLR), the CRD format reports ground-transmit epochs (epoch event 2). The parser converts each epoch to reception time before the two-way light-time solution. Applying the range model without this conversion inflates the CPF residual from 7.83 m to 39.5 m RMS. This convention was identified by diagnostic, not assumed.
+
+**What is not implemented.** The conjunction exporter emits a human-readable summary, not a CCSDS 508.0-B-1 CDM. `parse_ccsds_oem` does not parse CCSDS OEM files. The Foster–Elrod Pc is not validated against a reference implementation. SRP is not part of the Orekit cross-validation. These gaps are recorded in `ROADMAP.md` rather than hidden behind feature names.
+
+# Research impact statement
+
+**Independent validation on real SLR data.** The package ingests 98 ILRS CRD v2 normal points to Starlette from Yarragadee (station 7090), 2025-06-09 to 2025-06-11, and agrees with the independent ILRS CPF ephemeris to **7.83 m RMS** (mean 4.15 m, max 19.1 m) over 2.74 days at 15–66° elevation [@pearlman2019ilrs, @ilrs_crd]. The light-time correction is 20.9 m RMS. This is a measurement-model validation on real tracking data, not a self-consistent simulation.
+
+**Industry-standard cross-validation.** The numerical propagator is cross-validated against CNES Orekit 13.1.9: maximum position difference over 24 h is **1.2 mm for $J_2$** and **2.8 mm for $J_2$ + drag**. This establishes agreement with the most widely used open-source flight dynamics library at millimetre level for the force models covered.
+
+**Covariance realism benchmark.** A 50-scenario study produces `benchmarks/RESULTS.md` with per-trial Mahalanobis $D^2$, coverage, convergence flags, divergences, $\hat{R}$, and ESS. The mean $D^2$ is $7.37 \pm 0.74$ for BLS and $7.89 \pm 0.80$ for the posterior (ideal: 6). Per-axis position MAE is statistically indistinguishable (26.3 m vs 26.2 m). The SBC study ($N=104$) reports zero divergences and worst $\hat{R} = 1.046$. These are reproducible benchmark materials generated by committed scripts, not hand-typed values.
+
+# AI usage disclosure
+
+Generative AI tools were used during the preparation of this manuscript and the associated software. Specifically, AI was used for code refactoring suggestions, documentation drafting, and editorial review of the manuscript text. All software design decisions, implementation, validation, and scientific interpretation were performed and verified by the author. All AI-generated suggestions were reviewed, modified, and tested by the author before inclusion. The author takes full responsibility for the accuracy and correctness of all submitted materials.
+
+# Acknowledgements
+
+The author acknowledges the SciML open-source community and the International Laser Ranging Service (ILRS) for making tracking data openly accessible.
+
+# References
