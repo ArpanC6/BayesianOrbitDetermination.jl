@@ -1,0 +1,16 @@
+# BayesianOrbitDetermination.jl conjunction summary
+# This is a human-readable summary, NOT a CCSDS Conjunction Data Message.
+# For official exchange, use export_ccsds_cdm conforming to CCSDS 508.0-B-1.
+
+satellite_1    = ISS
+satellite_2    = COSMOS-2251-DEBRIS
+tca_seconds    = 1000.0
+miss_distance  = 0.13152946437955948 km
+relative_speed = 15.247294842036734 km/s
+collision_probability = 0.002938106951291611
+hard_body_radius = 20.0 m
+
+r1_eci_km = [6800.0, 0.0, 0.0]
+v1_eci_kms = [0.0, 7.6, 0.0]
+r2_eci_km = [6800.12, 0.05, 0.02]
+v2_eci_kms = [0.0, -7.6, 1.2]
